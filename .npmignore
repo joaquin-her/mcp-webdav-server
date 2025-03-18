@@ -1,0 +1,44 @@
+# Source files
+src/
+test/
+tests/
+
+# Development files
+.github/
+.vscode/
+.eslintrc.json
+jest.config.js
+tsconfig.json
+setup.sh
+setup.bat
+verify-build.bat
+build-test.bat
+npm-pack.bat
+
+# Documentation
+CLAUDE_INTEGRATION.md
+SUMMARY.md
+SUMMARY_OF_FIXES.md
+NPM_PUBLISH.md
+
+# Docker files
+Dockerfile
+docker-compose.yml
+
+# Logs
+*.log
+errors.log
+errors.1.log
+
+# Test directories
+test-build/
+coverage/
+__tests__/
+
+# Environment files
+.env
+.env.example
+
+# Git files
+.git/
+.gitignore

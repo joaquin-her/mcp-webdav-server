@@ -39,12 +39,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/LaubPlusCo/mpc-webdav-server"
+    "url": "https://github.com/LaubPlusCo/mcp-webdav-server"
   },
   "bugs": {
-    "url": "https://github.com/LaubPlusCo/mpc-webdav-server/issues"
+    "url": "https://github.com/LaubPlusCo/mcp-webdav-server/issues"
   },
-  "homepage": "https://github.com/LaubPlusCo/mpc-webdav-server/#readme",
+  "homepage": "https://github.com/LaubPlusCo/mcp-webdav-server/#readme",
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.7.0",

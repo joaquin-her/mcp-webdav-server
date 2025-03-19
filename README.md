@@ -230,6 +230,7 @@ npm test
         "webdav": {
             "command": "npx",
             "args": [
+                "-y",
                 "webdav-mcp-server"
             ],
             "env": {
@@ -237,7 +238,7 @@ npm test
                 "WEBDAV_ROOT_PATH": "<WEBDAV_ROOT_PATH>",
                 "WEBDAV_USERNAME": "<WEBDAV_USERNAME>",
                 "WEBDAV_PASSWORD": "<WEBDAV_PASSWORD>",
-                "WEBDAV_AUTH_ENABLED": true|false
+                "WEBDAV_AUTH_ENABLED": "true|false"
             }
         }
     }
@@ -262,7 +263,7 @@ npm test
                 "WEBDAV_ROOT_PATH": "<WEBDAV_ROOT_PATH>",
                 "WEBDAV_USERNAME": "<WEBDAV_USERNAME>",
                 "WEBDAV_PASSWORD": "<WEBDAV_PASSWORD>",
-                "WEBDAV_AUTH_ENABLED": true|false
+                "WEBDAV_AUTH_ENABLED": "true|false"
             }
         }
     }
@@ -397,21 +398,6 @@ await startWebDAVServer({
   }
 });
 ```
-
-## Troubleshooting
-
-If you encounter any issues:
-
-1. Check the logs for detailed error messages
-   - Set `LOG_LEVEL=debug` in your .env file for more detailed logs
-   - Log files include timestamps, log levels, and structured data for better analysis
-2. Verify your WebDAV server is running and accessible
-3. Ensure your credentials are correct in the .env file
-4. Check connection pool status in the logs
-   - The server maintains a pool of WebDAV connections for better performance
-   - Connection issues will be clearly logged with detailed error information
-5. Validate your configuration
-   - The server uses Zod to validate configuration, so configuration errors will be clearly reported
 
 ## License
 

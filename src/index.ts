@@ -6,6 +6,8 @@ import { createLogger } from './utils/logger.js';
 
 async function main() {
   try {
+    console.log(`Starting webdav-mcp-server (pid ${process.pid})`);
+
     // Get command line arguments
     const args = process.argv.slice(2);
     const useHttp = args.includes('--http');

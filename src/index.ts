@@ -25,7 +25,7 @@ async function main() {
     
     // Prepare HTTP config with optional authentication
     const httpConfig = useHttp ? {
-      port: parseInt(process.env.SERVER_PORT || '3000', 10),
+      port: parseInt(process.env.PORT || process.env.SERVER_PORT || '3000', 10),
       auth: {
         enabled: process.env.AUTH_ENABLED === 'true',
         username: process.env.AUTH_USERNAME,

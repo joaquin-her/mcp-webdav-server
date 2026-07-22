@@ -31,17 +31,6 @@ export class Logger {
   }
 
   /**
-   * Check if logging is supported by the server
-   */
-  private isLoggingSupported(): boolean {
-    if (!this.server) return false;
-
-    // Check if client has registered the logging capability
-    const capabilities = this.server.getClientCapabilities?.();
-    return capabilities?.logging !== undefined;
-  }
-
-  /**
    * Format data for logging
    */
   private formatData(message: string, data?: any): any {
@@ -70,7 +59,7 @@ export class Logger {
    * Safely send a logging message to the server
    */
   private sendLogMessage(level: string, message: string, data?: any): void {
-    if (!this.server || !this.isLoggingSupported()) return;
+    if (!this.server) return;
     
     try {
       this.server.sendLoggingMessage({

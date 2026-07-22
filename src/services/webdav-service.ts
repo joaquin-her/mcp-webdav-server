@@ -67,16 +67,9 @@ export class WebDAVService {
     logger.debug(`Listing directory: ${fullPath}`);
     
     try {
-      // In v5.x we need to handle the response differently
       const result = await this.client.getDirectoryContents(fullPath);
-      
-      // Convert the result to our FileStat interface
-      const fileStats = Array.isArray(result) 
-        ? result.map(item => this.convertToFileStat(item))
-        : this.isResponseData(result) && Array.isArray(result.data)
-          ? result.data.map(item => this.convertToFileStat(item))
-          : [];
-          
+      const fileStats = result.map(item => this.convertToFileStat(item));
+
       logger.debug(`Listed ${fileStats.length} items in directory: ${fullPath}`);
       return fileStats;
     } catch (error) {

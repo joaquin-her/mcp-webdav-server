@@ -28,7 +28,7 @@ function resolvePublicUrl(port: number): URL {
   return new URL(`http://localhost:${port}`);
 }
 
-export function setupExpressServer(server: McpServer, config: ExpressServerConfig): express.Application {
+export function setupExpressServer(createMcpServer: () => McpServer, config: ExpressServerConfig): express.Application {
   const logger = createLogger('ExpressServer');
   const app = express();
 
@@ -103,13 +103,13 @@ export function setupExpressServer(server: McpServer, config: ExpressServerConfi
           }
         };
 
+        const server = createMcpServer();
         await server.connect(transport);
       }
 
       await transport.handleRequest(req, res, req.body);
     } catch (error) {
       logger.error('Error handling /mcp request:', error);
-      console.error('Error handling /mcp request:', error);
       if (!res.headersSent) {
         res.status(500).json({
           jsonrpc: '2.0',

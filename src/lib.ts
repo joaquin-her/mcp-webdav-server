@@ -43,26 +43,39 @@ export async function startWebDAVServer(options: ServerOptions): Promise<void> {
     // Initialize the WebDAV service
     const webdavService = new WebDAVService(webdavConfig);
 
-    // Create the MCP server
-    const server = new McpServer({
-      name: 'WebDAV Server',
-      version: '1.0.1',
-      description: 'MCP Server for WebDAV operations with configurable authentication'
-    }, {
-      capabilities: {
-        logging: {},     // Support for logging
-        prompts: {},     // Support for prompts
-        resources: {},   // Support for resources
-        tools: {}        // Support for tools
-      }
-    });
-    
+    // Builds a fresh MCP server instance. A Server/McpServer can only be
+    // connected to a single transport at a time, so Streamable HTTP (which
+    // may serve multiple concurrent sessions) needs one instance per
+    // session rather than one shared instance.
+    function createMcpServer(): McpServer {
+      const server = new McpServer({
+        name: 'WebDAV Server',
+        version: '1.0.1',
+        description: 'MCP Server for WebDAV operations with configurable authentication'
+      }, {
+        capabilities: {
+          logging: {},     // Support for logging
+          prompts: {},     // Support for prompts
+          resources: {},   // Support for resources
+          tools: {}        // Support for tools
+        }
+      });
+
+      setupResourceHandlers(server, webdavService);
+      setupToolHandlers(server, webdavService);
+      setupPromptHandlers(server);
+
+      return server;
+    }
+
+    const bootstrapServer = createMcpServer();
+
     // Set the MCP server for all loggers to use
-    setLoggerServer(server.server);
-    
+    setLoggerServer(bootstrapServer.server);
+
     // Now that the server is set up, we can create a logger
     const logger = createLogger('WebDAVServer');
-    
+
     // Log startup information
     logger.info('WebDAV MCP Server started', {
       webdavUrl: webdavConfig.rootUrl,
@@ -71,31 +84,24 @@ export async function startWebDAVServer(options: ServerOptions): Promise<void> {
       httpPort: useHttp ? httpConfig?.port : undefined,
       httpAuthEnabled: useHttp ? httpConfig?.auth?.enabled : undefined
     });
-    
-    // Set up handlers
-    logger.debug('Setting up MCP handlers');
-    
-    setupResourceHandlers(server, webdavService);
-    setupToolHandlers(server, webdavService);
-    setupPromptHandlers(server);
 
     // Get connection pool stats for logging
     const poolStats = webdavConnectionPool.getStats();
     logger.info('WebDAV connection pool status', poolStats);
 
     if (useHttp) {
-      // Start Express server with SSE transport
+      // Start Express server with Streamable HTTP transport
       logger.info(`Starting HTTP server on port ${httpConfig!.port}`);
-      setupExpressServer(server, {
+      setupExpressServer(createMcpServer, {
         port: httpConfig!.port,
         auth: httpConfig!.auth
       });
       logger.info(`HTTP server started on port ${httpConfig!.port}`);
     } else {
-      // Use stdio transport
+      // Use stdio transport with the single bootstrap instance
       logger.info('Starting server with stdio transport');
       const transport = new StdioServerTransport();
-      await server.connect(transport);
+      await bootstrapServer.connect(transport);
       logger.info('Server connected with stdio transport');
     }
   } catch (error) {

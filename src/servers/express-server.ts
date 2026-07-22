@@ -32,6 +32,11 @@ export function setupExpressServer(server: McpServer, config: ExpressServerConfi
   const logger = createLogger('ExpressServer');
   const app = express();
 
+  // Railway (and most PaaS hosts) sit behind a reverse proxy that sets
+  // X-Forwarded-For; without this, express-rate-limit (used internally by
+  // mcpAuthRouter) can't safely derive client IPs and throws on every request.
+  app.set('trust proxy', 1);
+
   const authEnabled = config.auth?.enabled ?? (process.env.AUTH_ENABLED === 'true');
   const username = config.auth?.username || process.env.AUTH_USERNAME;
   const password = config.auth?.password || process.env.AUTH_PASSWORD;

@@ -18,7 +18,6 @@ export function setupExpressServer(server: McpServer, config: ExpressServerConfi
   // Create logger using the server instance
   const logger = createLogger('ExpressServer');
   const app = express();
-  app.use(express.json());
 
   // Map to store connected clients
   const clients = new Map<string, SSEServerTransport>();
@@ -47,11 +46,8 @@ export function setupExpressServer(server: McpServer, config: ExpressServerConfi
     
     // Store the transport by its session ID
     clients.set(transport.sessionId, transport);
-    
-    // Start the SSE connection
-    await transport.start();
-    
-    // Connect the server to this transport
+
+    // Connect the server to this transport (this starts the SSE connection)
     server.connect(transport).catch(error => {
       logger.error(`Error connecting server to transport:`, error);
     });

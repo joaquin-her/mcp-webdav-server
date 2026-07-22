@@ -17,6 +17,7 @@ out/
 .env.development
 .env.test
 .env.production
+.mcp.json
 
 # IDE and editors
 .idea/

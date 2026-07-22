@@ -1,6 +1,31 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebDAVService } from '../services/webdav-service.js';
 import { z } from 'zod';
+import { createLogger } from '../utils/logger.js';
+
+const logger = createLogger('ToolCall');
+
+/**
+ * Wraps a tool callback to log its invocation (name, arguments, result) at
+ * DEBUG level. Controlled via the LOG_LEVEL env var (see utils/logger.ts) —
+ * a no-op at the default 'info' level.
+ */
+function withDebugLogging<Args extends Record<string, unknown>, Result>(
+  toolName: string,
+  callback: (args: Args) => Promise<Result>
+): (args: Args) => Promise<Result> {
+  return async (args: Args) => {
+    logger.debug(`tools/call ${toolName} started`, { arguments: args });
+    try {
+      const result = await callback(args);
+      logger.debug(`tools/call ${toolName} completed`, { result });
+      return result;
+    } catch (error) {
+      logger.debug(`tools/call ${toolName} threw`, { error: (error as Error).message });
+      throw error;
+    }
+  };
+}
 
 export function setupToolHandlers(server: McpServer, webdavService: WebDAVService) {
   // Create file tool
@@ -12,7 +37,7 @@ export function setupToolHandlers(server: McpServer, webdavService: WebDAVServic
       content: z.string(),
       overwrite: z.boolean().optional().default(false)
     },
-    async ({ path, content, overwrite }) => {
+    withDebugLogging('webdav_create_remote_file', async ({ path, content, overwrite }) => {
       try {
         // Check if file exists and respect overwrite flag
         const exists = await webdavService.exists(path);
@@ -27,7 +52,7 @@ export function setupToolHandlers(server: McpServer, webdavService: WebDAVServic
         }
 
         await webdavService.writeFile(path, content);
-        
+
         return {
           content: [{
             type: 'text',
@@ -43,7 +68,7 @@ export function setupToolHandlers(server: McpServer, webdavService: WebDAVServic
           isError: true
         };
       }
-    }
+    })
   );
 
   // Read file tool
@@ -53,10 +78,10 @@ export function setupToolHandlers(server: McpServer, webdavService: WebDAVServic
     {
       path: z.string().min(1, 'Path must not be empty')
     },
-    async ({ path }) => {
+    withDebugLogging('webdav_get_remote_file', async ({ path }) => {
       try {
         const content = await webdavService.readFile(path);
-        
+
         return {
           content: [{
             type: 'text',
@@ -72,7 +97,7 @@ export function setupToolHandlers(server: McpServer, webdavService: WebDAVServic
           isError: true
         };
       }
-    }
+    })
   );
 
   // Update file tool
@@ -83,7 +108,7 @@ export function setupToolHandlers(server: McpServer, webdavService: WebDAVServic
       path: z.string().min(1, 'Path must not be empty'),
       content: z.string()
     },
-    async ({ path, content }) => {
+    withDebugLogging('webdav_update_remote_file', async ({ path, content }) => {
       try {
         // Check if file exists
         const exists = await webdavService.exists(path);
@@ -98,7 +123,7 @@ export function setupToolHandlers(server: McpServer, webdavService: WebDAVServic
         }
 
         await webdavService.writeFile(path, content);
-        
+
         return {
           content: [{
             type: 'text',
@@ -114,7 +139,7 @@ export function setupToolHandlers(server: McpServer, webdavService: WebDAVServic
           isError: true
         };
       }
-    }
+    })
   );
 
   // Delete file or directory tool
@@ -124,7 +149,7 @@ export function setupToolHandlers(server: McpServer, webdavService: WebDAVServic
     {
       path: z.string().min(1, 'Path must not be empty')
     },
-    async ({ path }) => {
+    withDebugLogging('webdav_delete_remote_item', async ({ path }) => {
       try {
         // Check if path exists
         const exists = await webdavService.exists(path);
@@ -139,7 +164,7 @@ export function setupToolHandlers(server: McpServer, webdavService: WebDAVServic
         }
 
         await webdavService.delete(path);
-        
+
         return {
           content: [{
             type: 'text',
@@ -155,7 +180,7 @@ export function setupToolHandlers(server: McpServer, webdavService: WebDAVServic
           isError: true
         };
       }
-    }
+    })
   );
 
   // Create directory tool
@@ -165,10 +190,10 @@ export function setupToolHandlers(server: McpServer, webdavService: WebDAVServic
     {
       path: z.string().min(1, 'Path must not be empty')
     },
-    async ({ path }) => {
+    withDebugLogging('webdav_create_remote_directory', async ({ path }) => {
       try {
         await webdavService.createDirectory(path);
-        
+
         return {
           content: [{
             type: 'text',
@@ -184,7 +209,7 @@ export function setupToolHandlers(server: McpServer, webdavService: WebDAVServic
           isError: true
         };
       }
-    }
+    })
   );
 
   // Move/rename file or directory tool
@@ -196,7 +221,7 @@ export function setupToolHandlers(server: McpServer, webdavService: WebDAVServic
       toPath: z.string().min(1, 'Destination path must not be empty'),
       overwrite: z.boolean().optional().default(false)
     },
-    async ({ fromPath, toPath, overwrite }) => {
+    withDebugLogging('webdav_move_remote_item', async ({ fromPath, toPath, overwrite }) => {
       try {
         // Check if source exists
         const sourceExists = await webdavService.exists(fromPath);
@@ -223,7 +248,7 @@ export function setupToolHandlers(server: McpServer, webdavService: WebDAVServic
         }
 
         await webdavService.move(fromPath, toPath);
-        
+
         return {
           content: [{
             type: 'text',
@@ -239,7 +264,7 @@ export function setupToolHandlers(server: McpServer, webdavService: WebDAVServic
           isError: true
         };
       }
-    }
+    })
   );
 
   // Copy file or directory tool
@@ -251,7 +276,7 @@ export function setupToolHandlers(server: McpServer, webdavService: WebDAVServic
       toPath: z.string().min(1, 'Destination path must not be empty'),
       overwrite: z.boolean().optional().default(false)
     },
-    async ({ fromPath, toPath, overwrite }) => {
+    withDebugLogging('webdav_copy_remote_item', async ({ fromPath, toPath, overwrite }) => {
       try {
         // Check if source exists
         const sourceExists = await webdavService.exists(fromPath);
@@ -278,7 +303,7 @@ export function setupToolHandlers(server: McpServer, webdavService: WebDAVServic
         }
 
         await webdavService.copy(fromPath, toPath);
-        
+
         return {
           content: [{
             type: 'text',
@@ -294,7 +319,7 @@ export function setupToolHandlers(server: McpServer, webdavService: WebDAVServic
           isError: true
         };
       }
-    }
+    })
   );
 
   // List directory tool
@@ -304,10 +329,10 @@ export function setupToolHandlers(server: McpServer, webdavService: WebDAVServic
     {
       path: z.string().optional().default('/')
     },
-    async ({ path }) => {
+    withDebugLogging('webdav_list_remote_directory', async ({ path }) => {
       try {
         const files = await webdavService.list(path);
-        
+
         // Format response
         const formattedFiles = files.map(file => ({
           name: file.basename,
@@ -316,7 +341,7 @@ export function setupToolHandlers(server: McpServer, webdavService: WebDAVServic
           size: file.size,
           lastModified: file.lastmod
         }));
-        
+
         return {
           content: [{
             type: 'text',
@@ -332,6 +357,6 @@ export function setupToolHandlers(server: McpServer, webdavService: WebDAVServic
           isError: true
         };
       }
-    }
+    })
   );
 }

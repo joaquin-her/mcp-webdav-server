@@ -7,6 +7,21 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 // Global server reference for logging
 let globalMcpServer: Server | null = null;
 
+const LOG_LEVELS = ['error', 'warning', 'info', 'debug'] as const;
+type LogLevel = (typeof LOG_LEVELS)[number];
+
+function resolveConsoleLevel(): LogLevel {
+  const configured = (process.env.LOG_LEVEL || 'info').toLowerCase();
+  return (LOG_LEVELS as readonly string[]).includes(configured) ? (configured as LogLevel) : 'info';
+}
+
+// Read once at startup; LOG_LEVEL isn't expected to change at runtime.
+const consoleLevel = resolveConsoleLevel();
+
+function isLevelEnabled(level: LogLevel): boolean {
+  return LOG_LEVELS.indexOf(level) <= LOG_LEVELS.indexOf(consoleLevel);
+}
+
 /**
  * Set the global MCP server instance for all loggers to use
  */
@@ -78,7 +93,9 @@ export class Logger {
    * Print the log line to stdout/stderr, so it shows up in process logs
    * (e.g. Railway) regardless of whether an MCP client is connected.
    */
-  private logToConsole(level: string, message: string, data?: any): void {
+  private logToConsole(level: LogLevel, message: string, data?: any): void {
+    if (!isLevelEnabled(level)) return;
+
     const line = `[${level.toUpperCase()}] [${this.context}] ${message}`;
     const consoleFn = level === 'error' || level === 'warning' ? console.error : console.log;
 

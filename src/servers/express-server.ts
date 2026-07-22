@@ -1,7 +1,12 @@
 import express from 'express';
+import { randomUUID } from 'node:crypto';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
-import { createAuthMiddleware, AuthOptions } from '../middleware/auth-middleware.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { mcpAuthRouter } from '@modelcontextprotocol/sdk/server/auth/router.js';
+import { requireBearerAuth } from '@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js';
+import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
+import { SingleUserOAuthProvider } from '../auth/single-user-oauth-provider.js';
+import { createLoginRouter } from '../auth/login-routes.js';
 import { createLogger } from '../utils/logger.js';
 
 export interface ExpressServerConfig {
@@ -9,89 +14,119 @@ export interface ExpressServerConfig {
   auth?: {
     username?: string;
     password?: string;
-    realm?: string;
     enabled?: boolean;
   };
 }
 
+function resolvePublicUrl(port: number): URL {
+  const explicit = process.env.PUBLIC_URL;
+  if (explicit) return new URL(explicit);
+
+  const railwayDomain = process.env.RAILWAY_PUBLIC_DOMAIN;
+  if (railwayDomain) return new URL(`https://${railwayDomain}`);
+
+  return new URL(`http://localhost:${port}`);
+}
+
 export function setupExpressServer(server: McpServer, config: ExpressServerConfig): express.Application {
-  // Create logger using the server instance
   const logger = createLogger('ExpressServer');
   const app = express();
 
-  // Map to store connected clients
-  const clients = new Map<string, SSEServerTransport>();
+  const authEnabled = config.auth?.enabled ?? (process.env.AUTH_ENABLED === 'true');
+  const username = config.auth?.username || process.env.AUTH_USERNAME;
+  const password = config.auth?.password || process.env.AUTH_PASSWORD;
 
-  // Create auth middleware based on configuration
-  const authOptions: AuthOptions = {
-    username: config.auth?.username || process.env.AUTH_USERNAME,
-    password: config.auth?.password || process.env.AUTH_PASSWORD,
-    realm: config.auth?.realm || process.env.AUTH_REALM || 'MCP WebDAV Server',
-    enabled: config.auth?.enabled ?? (process.env.AUTH_ENABLED === 'true')
-  };
+  const publicUrl = resolvePublicUrl(config.port);
+  const mcpResourceUrl = new URL('/mcp', publicUrl);
 
-  // Only apply auth middleware if enabled
-  if (authOptions.enabled && authOptions.username && authOptions.password) {
-    const authMiddleware = createAuthMiddleware(authOptions);
-    app.use(authMiddleware);
-    logger.info('Authentication middleware enabled');
+  if (authEnabled && username && password) {
+    const provider = new SingleUserOAuthProvider({ username, password });
+
+    app.use(mcpAuthRouter({
+      provider,
+      issuerUrl: publicUrl,
+      resourceServerUrl: mcpResourceUrl
+    }));
+    app.use(createLoginRouter(provider));
+
+    app.use(
+      '/mcp',
+      express.json(),
+      requireBearerAuth({
+        verifier: provider,
+        resourceMetadataUrl: `${publicUrl.origin}/.well-known/oauth-protected-resource/mcp`
+      })
+    );
+
+    logger.info('OAuth 2.1 authentication enabled for /mcp');
   } else {
-    logger.info('Authentication middleware disabled');
+    app.use('/mcp', express.json());
+    logger.info('Authentication disabled for /mcp (AUTH_ENABLED is not true)');
   }
 
-  // SSE endpoint for client connection
-  app.get('/sse', async (req, res) => {
-    // Create transport for this client
-    const transport = new SSEServerTransport('/messages', res);
-    
-    // Store the transport by its session ID
-    clients.set(transport.sessionId, transport);
+  // Map to store active Streamable HTTP transports by session ID
+  const transports = new Map<string, StreamableHTTPServerTransport>();
 
-    // Connect the server to this transport (this starts the SSE connection)
-    server.connect(transport).catch(error => {
-      logger.error(`Error connecting server to transport:`, error);
-    });
-    
-    // Handle client disconnect
-    req.on('close', () => {
-      clients.delete(transport.sessionId);
-      logger.info(`Client ${transport.sessionId} disconnected`);
-    });
-  });
-
-  // Message endpoint for client to server communication
-  app.post('/messages', async (req, res) => {
-    const sessionId = req.query.sessionId as string;
-    
-    if (!sessionId || !clients.has(sessionId)) {
-      res.status(400).json({ error: 'Invalid or missing session ID' });
-      return;
-    }
-    
-    const transport = clients.get(sessionId)!;
-    
+  app.all('/mcp', async (req, res) => {
     try {
-      await transport.handlePostMessage(req, res);
+      const sessionId = req.headers['mcp-session-id'] as string | undefined;
+      let transport = sessionId ? transports.get(sessionId) : undefined;
+
+      if (!transport) {
+        if (req.method !== 'POST' || !isInitializeRequest(req.body)) {
+          res.status(400).json({
+            jsonrpc: '2.0',
+            error: { code: -32000, message: 'Bad Request: No valid session ID provided' },
+            id: null
+          });
+          return;
+        }
+
+        transport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: () => randomUUID(),
+          onsessioninitialized: (newSessionId) => {
+            transports.set(newSessionId, transport!);
+            logger.info(`MCP session initialized: ${newSessionId}`);
+          }
+        });
+
+        transport.onclose = () => {
+          const sid = transport!.sessionId;
+          if (sid) {
+            transports.delete(sid);
+            logger.info(`MCP session closed: ${sid}`);
+          }
+        };
+
+        await server.connect(transport);
+      }
+
+      await transport.handleRequest(req, res, req.body);
     } catch (error) {
-      logger.error(`Error handling message for session ${sessionId}:`, error);
-      // Note: handlePostMessage already sends appropriate response
+      logger.error('Error handling /mcp request:', error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          jsonrpc: '2.0',
+          error: { code: -32603, message: 'Internal server error' },
+          id: null
+        });
+      }
     }
   });
 
-  // Health check endpoint
+  // Health check endpoint (unauthenticated, for platform healthchecks)
   app.get('/health', (req, res) => {
     res.json({
       status: 'ok',
       name: 'WebDAV MCP Server',
       version: '1.0.0',
-      description: 'MCP Server for WebDAV operations with basic authentication',
-      connectedClients: clients.size
+      description: 'MCP Server for WebDAV operations with OAuth 2.1 authentication',
+      activeSessions: transports.size
     });
   });
 
-  // Start the server
   app.listen(config.port, () => {
-    logger.info(`HTTP server with SSE transport listening on port ${config.port}`);
+    logger.info(`HTTP server with Streamable HTTP transport listening on port ${config.port}`);
   });
 
   return app;

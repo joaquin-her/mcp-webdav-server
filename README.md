@@ -173,6 +173,26 @@ one login rather than a real regression.
 - `webdav_create_remote_directory` — create a directory
 - `webdav_move_remote_item` — move/rename a file or directory
 - `webdav_copy_remote_item` — copy a file or directory
+- `book_search` — search [Anna's Archive](https://annas-archive.gl) for books
+- `book_download` — download a book by MD5 hash, saved to a WebDAV path
+- `article_search` — search academic articles by DOI or keywords
+- `article_download` — download an article by DOI, saved to a WebDAV path
+
+### Anna's Archive integration
+
+Ported from [annas-mcp](https://github.com/iosifache/annas-mcp) (a separate
+stdio-only Go MCP server) so it's usable from the remote HTTP/OAuth endpoint
+already deployed here, alongside the WebDAV tools. Search works with no
+configuration; downloads require `ANNAS_SECRET_KEY` (from
+[a donation to Anna's Archive](https://annas-archive.gl/donate)) and write the
+downloaded file to a WebDAV path you pass in the tool call — there's no local
+filesystem to save to on a remote server. See `ANNAS_SECRET_KEY` and
+`ANNAS_BASE_URL` in [.env.example](.env.example).
+
+Without a membership key, set `ANNAS_SECRET_KEY=slow`: `book_download` and
+`article_download` then return `/slow_download/` links instead of fetching
+the file — that page sits behind a DDoS-Guard browser challenge a server-side
+request can't solve, so the user opens the link themselves.
 
 ## Example Queries
 

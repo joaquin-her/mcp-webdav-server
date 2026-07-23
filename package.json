@@ -43,6 +43,7 @@
     "@modelcontextprotocol/sdk": "^1.7.0",
     "basic-auth": "^2.0.1",
     "bcryptjs": "^2.4.3",
+    "cheerio": "^1.2.0",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "webdav": "^5.8.0",
@@ -57,8 +58,8 @@
     "@typescript-eslint/eslint-plugin": "^7.2.0",
     "@typescript-eslint/parser": "^7.2.0",
     "eslint": "^8.57.0",
-    "typescript": "^5.4.2",
-    "tsc-watch": "^6.0.4"
+    "tsc-watch": "^6.0.4",
+    "typescript": "^5.4.2"
   },
   "engines": {
     "node": ">=18.0.0"

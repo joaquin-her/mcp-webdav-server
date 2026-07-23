@@ -1,0 +1,92 @@
+@startuml architecture
+title WebDAV MCP Server — Components
+
+skinparam componentStyle rectangle
+skinparam wrapWidth 200
+skinparam defaultTextAlignment center
+
+actor "MCP Client\n(Claude Code / claude.ai / Claude Desktop)" as Client
+
+package "Entry points" {
+  component "bin.ts / index.ts" as Entry
+}
+
+package "Transports" {
+  component "StdioServerTransport\n(local, no auth)" as Stdio
+  component "express-server.ts\nStreamable HTTP (/mcp)" as Express
+}
+
+package "Auth (HTTP transport only)" {
+  component "SingleUserOAuthProvider\nsingle-user-oauth-provider.ts" as OAuthProvider
+  component "login-routes.ts\n/login, /login-submit" as LoginRoutes
+  component "state-store.ts" as StateStore
+  database "oauth-state.json\n(Railway Volume /data)" as StateFile
+}
+
+package "lib.ts\n(startWebDAVServer)" {
+  component "McpServer\n(per-session on HTTP,\nsingleton on stdio)" as McpServer
+}
+
+package "Tool / Resource handlers" {
+  component "tool-handlers.ts\nwebdav_* tools" as WebdavTools
+  component "anna-tool-handlers.ts\nbook_/article_* tools" as AnnaTools
+  component "resource-handlers.ts" as ResourceHandlers
+  component "prompt-handlers.ts" as PromptHandlers
+}
+
+package "Services" {
+  component "WebDAVService\nwebdav-service.ts" as WebdavService
+  component "WebDAVConnectionPool\nwebdav-connection-pool.ts" as WebdavPool
+  component "AnnaService\nanna-service.ts" as AnnaService
+}
+
+cloud "External systems" {
+  component "WebDAV server\n(Koofr, Nextcloud, ...)" as WebdavRemote
+  component "Anna's Archive\n(search, fast_download API,\nslow_download pages)" as AnnaRemote
+}
+
+Client --> Stdio : JSON-RPC over stdio
+Client --> Express : JSON-RPC over HTTPS
+
+Entry --> Stdio
+Entry --> Express
+Entry --> McpServer : creates server instance(s)
+
+Express --> OAuthProvider : authorize / token / verify
+OAuthProvider --> LoginRoutes : renders login form
+OAuthProvider --> StateStore : persist/load clients & tokens
+StateStore --> StateFile
+
+Express --> McpServer : one instance per session
+
+McpServer --> WebdavTools
+McpServer --> AnnaTools
+McpServer --> ResourceHandlers
+McpServer --> PromptHandlers
+
+WebdavTools --> WebdavService
+ResourceHandlers --> WebdavService
+AnnaTools --> AnnaService
+AnnaTools --> WebdavService : writeFile (uploads\ndownloaded books/papers)
+
+WebdavService --> WebdavPool : getConnection (pooled\nwebdav clients library)
+WebdavPool --> WebdavRemote : PROPFIND/GET/PUT/...
+
+AnnaService --> AnnaRemote : search scraping (cheerio),\nfast_download API,\nslow_download link generation
+
+note right of AnnaService
+  ANNAS_SECRET_KEY unset: search only
+  ANNAS_SECRET_KEY=<key>: fast_download API
+  ANNAS_SECRET_KEY=slow: returns
+  /slow_download/ links instead of
+  fetching (DDoS-Guard JS challenge
+  can't be solved server-side)
+end note
+
+note right of StateFile
+  Without a mounted volume this file
+  lives on ephemeral storage and is
+  lost on every Railway redeploy
+end note
+
+@enduml

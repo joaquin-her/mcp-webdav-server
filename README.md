@@ -129,6 +129,40 @@ Full details, including a reference flow for bots that need to drive OAuth
 programmatically (Telegram/WhatsApp intermediaries), are in
 [REMOTE_CONNECTION.md](REMOTE_CONNECTION.md).
 
+### Persisting OAuth state across restarts
+
+Registered OAuth clients and issued tokens are written to a JSON file at
+`STATE_FILE_PATH` (default `/data/oauth-state.json`) every time a client
+registers or a token is issued/revoked. Without a real persistent volume
+mounted at that path, this file lives on the container's ephemeral
+filesystem and is lost on every restart/redeploy — meaning every deploy
+would otherwise force a full OAuth re-login in Claude Code or any
+connected bot.
+
+On Railway: create a **Volume** for the service (Settings → Volumes) with
+mount path `/data`. Railway rejects a Docker `VOLUME` instruction in the
+Dockerfile itself (the build fails with *"docker VOLUME ... is not
+supported, use Railway Volumes"*), so the volume must be created from the
+dashboard or via the [Railway API](https://docs.railway.com/reference/public-api),
+not declared in the Dockerfile.
+
+On a plain Docker host: mount a volume at `/data`, e.g.
+`docker run -v webdav-mcp-data:/data ...`.
+
+Token lifetimes (hardcoded in `src/auth/single-user-oauth-provider.ts`):
+
+| Item | Lifetime | Persisted? |
+|---|---|---|
+| Access token | 1 hour | Yes |
+| Refresh token | 30 days | Yes |
+| Authorization code | 5 minutes | No (in-memory only, always mid-flow) |
+| Registered OAuth client | Never expires | Yes |
+
+Authorization codes and in-flight login sessions are intentionally kept
+in-memory only — they live minutes at most and are always tied to a
+request in progress, so losing them on a restart just means retrying that
+one login rather than a real regression.
+
 ## Available MCP Tools
 
 - `webdav_list_remote_directory` — list files and directories at a path

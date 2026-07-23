@@ -6,6 +6,7 @@ import { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 import { OAuthClientInformationFull, OAuthTokenRevocationRequest, OAuthTokens } from '@modelcontextprotocol/sdk/shared/auth.js';
 import { verifyPassword } from '../utils/password-utils.js';
 import { createLogger } from '../utils/logger.js';
+import { loadState, saveState } from './state-store.js';
 
 const logger = createLogger('OAuthProvider');
 
@@ -37,8 +38,23 @@ export interface SingleUserCredentials {
   password: string;
 }
 
+/**
+ * Shape persisted to disk (see state-store.ts). Authorization codes and
+ * pending logins are intentionally excluded — they live for minutes at
+ * most and are always mid-flow, so losing them on a restart just means
+ * restarting that one login, not a real regression.
+ */
+interface PersistedState {
+  clients: [string, OAuthClientInformationFull][];
+  accessTokens: [string, StoredToken][];
+  refreshTokens: [string, StoredToken][];
+}
+
 class InMemoryClientsStore implements OAuthRegisteredClientsStore {
-  private clients = new Map<string, OAuthClientInformationFull>();
+  constructor(
+    private clients: Map<string, OAuthClientInformationFull>,
+    private persist: () => void
+  ) {}
 
   getClient(clientId: string): OAuthClientInformationFull | undefined {
     return this.clients.get(clientId);
@@ -54,6 +70,7 @@ class InMemoryClientsStore implements OAuthRegisteredClientsStore {
     };
     this.clients.set(fullClient.client_id, fullClient);
     logger.info('Registered new OAuth client', { clientId: fullClient.client_id, name: client.client_name });
+    this.persist();
     return fullClient;
   }
 }
@@ -65,14 +82,30 @@ class InMemoryClientsStore implements OAuthRegisteredClientsStore {
  * used for HTTP Basic Auth in this server.
  */
 export class SingleUserOAuthProvider implements OAuthServerProvider {
-  readonly clientsStore = new InMemoryClientsStore();
+  readonly clientsStore: InMemoryClientsStore;
 
+  private clients: Map<string, OAuthClientInformationFull>;
   private authCodes = new Map<string, StoredAuthCode>();
-  private accessTokens = new Map<string, StoredToken>();
-  private refreshTokens = new Map<string, StoredToken>();
+  private accessTokens: Map<string, StoredToken>;
+  private refreshTokens: Map<string, StoredToken>;
   private pendingLogins = new Map<string, PendingLogin>();
 
-  constructor(private credentials: SingleUserCredentials) {}
+  constructor(private credentials: SingleUserCredentials) {
+    const persisted = loadState<PersistedState>();
+    this.clients = new Map(persisted?.clients ?? []);
+    this.accessTokens = new Map(persisted?.accessTokens ?? []);
+    this.refreshTokens = new Map(persisted?.refreshTokens ?? []);
+
+    this.clientsStore = new InMemoryClientsStore(this.clients, () => this.persist());
+  }
+
+  private persist(): void {
+    saveState<PersistedState>({
+      clients: [...this.clients.entries()],
+      accessTokens: [...this.accessTokens.entries()],
+      refreshTokens: [...this.refreshTokens.entries()]
+    });
+  }
 
   /**
    * Renders a login form (GET) or validates submitted credentials (handled
@@ -181,6 +214,7 @@ export class SingleUserOAuthProvider implements OAuthServerProvider {
   async revokeToken(_client: OAuthClientInformationFull, request: OAuthTokenRevocationRequest): Promise<void> {
     this.accessTokens.delete(request.token);
     this.refreshTokens.delete(request.token);
+    this.persist();
   }
 
   private issueTokens(clientId: string): OAuthTokens {
@@ -190,6 +224,7 @@ export class SingleUserOAuthProvider implements OAuthServerProvider {
 
     this.accessTokens.set(accessToken, { clientId, expiresAt });
     this.refreshTokens.set(refreshToken, { clientId, expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000 });
+    this.persist();
 
     return {
       access_token: accessToken,

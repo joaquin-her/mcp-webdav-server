@@ -31,13 +31,16 @@ export function setupToolHandlers(server: McpServer, webdavService: WebDAVServic
   // Create file tool
   server.tool(
     'webdav_create_remote_file',
-    'Create a new file on a remote WebDAV server at the specified path',
+    'Create a new file on a remote WebDAV server at the specified path. ' +
+      'For binary files (PDFs, images, etc.), set encoding to "base64" and ' +
+      'pass base64-encoded content — plain "utf8" text corrupts binary data.',
     {
       path: z.string().min(1, 'Path must not be empty'),
       content: z.string(),
+      encoding: z.enum(['utf8', 'base64']).optional().default('utf8'),
       overwrite: z.boolean().optional().default(false)
     },
-    withDebugLogging('webdav_create_remote_file', async ({ path, content, overwrite }) => {
+    withDebugLogging('webdav_create_remote_file', async ({ path, content, encoding, overwrite }) => {
       try {
         // Check if file exists and respect overwrite flag
         const exists = await webdavService.exists(path);
@@ -51,7 +54,7 @@ export function setupToolHandlers(server: McpServer, webdavService: WebDAVServic
           };
         }
 
-        await webdavService.writeFile(path, content);
+        await webdavService.writeFile(path, content, encoding);
 
         return {
           content: [{
@@ -74,13 +77,16 @@ export function setupToolHandlers(server: McpServer, webdavService: WebDAVServic
   // Read file tool
   server.tool(
     'webdav_get_remote_file',
-    'Retrieve content from a file stored on a remote WebDAV server',
+    'Retrieve content from a file stored on a remote WebDAV server. ' +
+      'For binary files (PDFs, images, etc.), set encoding to "base64" to ' +
+      'get the raw bytes back losslessly — plain "utf8" text corrupts binary data.',
     {
-      path: z.string().min(1, 'Path must not be empty')
+      path: z.string().min(1, 'Path must not be empty'),
+      encoding: z.enum(['utf8', 'base64']).optional().default('utf8')
     },
-    withDebugLogging('webdav_get_remote_file', async ({ path }) => {
+    withDebugLogging('webdav_get_remote_file', async ({ path, encoding }) => {
       try {
-        const content = await webdavService.readFile(path);
+        const content = await webdavService.readFile(path, encoding);
 
         return {
           content: [{
@@ -103,12 +109,15 @@ export function setupToolHandlers(server: McpServer, webdavService: WebDAVServic
   // Update file tool
   server.tool(
     'webdav_update_remote_file',
-    'Update an existing file on a remote WebDAV server with new content',
+    'Update an existing file on a remote WebDAV server with new content. ' +
+      'For binary files (PDFs, images, etc.), set encoding to "base64" and ' +
+      'pass base64-encoded content — plain "utf8" text corrupts binary data.',
     {
       path: z.string().min(1, 'Path must not be empty'),
-      content: z.string()
+      content: z.string(),
+      encoding: z.enum(['utf8', 'base64']).optional().default('utf8')
     },
-    withDebugLogging('webdav_update_remote_file', async ({ path, content }) => {
+    withDebugLogging('webdav_update_remote_file', async ({ path, content, encoding }) => {
       try {
         // Check if file exists
         const exists = await webdavService.exists(path);
@@ -122,7 +131,7 @@ export function setupToolHandlers(server: McpServer, webdavService: WebDAVServic
           };
         }
 
-        await webdavService.writeFile(path, content);
+        await webdavService.writeFile(path, content, encoding);
 
         return {
           content: [{

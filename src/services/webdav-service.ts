@@ -102,16 +102,27 @@ export class WebDAVService {
   }
 
   /**
-   * Read file content as text
+   * Read file content. 'utf8' (default) decodes as text, which corrupts
+   * binary files (PDFs, images, etc.) — use 'base64' for those, and decode
+   * the result on the client side.
    */
-  async readFile(path: string): Promise<string> {
+  async readFile(path: string, encoding: 'utf8' | 'base64' = 'utf8'): Promise<string> {
     const fullPath = this.getFullPath(path);
-    logger.debug(`Reading file: ${fullPath}`);
-    
+    logger.debug(`Reading file: ${fullPath}`, { encoding });
+
     try {
+      if (encoding === 'base64') {
+        // format: 'binary' returns a Buffer, safe to re-encode losslessly
+        const content = await this.client.getFileContents(fullPath, { format: 'binary' });
+        const buffer = this.isResponseData(content) ? content.data : content;
+        const result = Buffer.from(buffer as ArrayBuffer).toString('base64');
+        logger.debug(`Read file: ${fullPath}`, { encoding, contentLength: result.length });
+        return result;
+      }
+
       // v5.x returns buffer by default, need to use format: 'text'
       const content = await this.client.getFileContents(fullPath, { format: 'text' });
-      
+
       // Handle both direct string response and detailed response
       let result: string;
       if (typeof content === 'string') {
@@ -121,9 +132,9 @@ export class WebDAVService {
       } else {
         throw new Error("Unexpected response format from server");
       }
-      
+
       const contentLength = result.length;
-      logger.debug(`Read file: ${fullPath}`, { contentLength });
+      logger.debug(`Read file: ${fullPath}`, { encoding, contentLength });
       return result;
     } catch (error) {
       logger.error(`Error reading file ${fullPath}:`, error);
@@ -132,16 +143,19 @@ export class WebDAVService {
   }
 
   /**
-   * Write content to a file
+   * Write content to a file. 'utf8' (default) writes the string as-is;
+   * 'base64' decodes it to raw bytes first, for binary files (PDFs,
+   * images, etc.) that would otherwise get corrupted by UTF-8 re-encoding.
    */
-  async writeFile(path: string, content: string | Buffer): Promise<void> {
+  async writeFile(path: string, content: string, encoding: 'utf8' | 'base64' = 'utf8'): Promise<void> {
     const fullPath = this.getFullPath(path);
-    const contentLength = typeof content === 'string' ? content.length : content.length;
-    logger.debug(`Writing file: ${fullPath}`, { contentLength });
-    
+    const payload: string | Buffer = encoding === 'base64' ? Buffer.from(content, 'base64') : content;
+    const contentLength = payload.length;
+    logger.debug(`Writing file: ${fullPath}`, { encoding, contentLength });
+
     try {
       // putFileContents in v5.x returns a boolean indicating success
-      const result = await this.client.putFileContents(fullPath, content);
+      const result = await this.client.putFileContents(fullPath, payload);
       
       // Check result based on type
       if (typeof result === 'boolean' && !result) {

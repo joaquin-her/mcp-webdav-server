@@ -182,6 +182,58 @@ más relevantes para un vault de Obsidian:
 Todas las rutas son relativas al `WEBDAV_ROOT_PATH` configurado en el
 servidor (ej. la carpeta del vault dentro de Koofr).
 
+## Subir o leer archivos binarios (PDFs, imágenes, etc.)
+
+`webdav_create_remote_file`, `webdav_update_remote_file` y
+`webdav_get_remote_file` aceptan un parámetro opcional `encoding`, con
+valores `"utf8"` (default) o `"base64"`.
+
+El transporte MCP es JSON, que solo puede llevar texto — con `encoding:
+"utf8"` (el default) el `content` se escribe literal como string. Para
+notas Markdown esto es exactamente lo que querés. Para binarios (PDFs,
+imágenes, adjuntos con bytes fuera del rango ASCII/UTF-8 válido), escribir
+esos bytes como si fueran texto los corrompe: se re-codifican y el archivo
+resultante no vuelve a abrir. La solución es pasar `encoding: "base64"`, que
+hace que el servidor decodifique el string como base64 a bytes crudos antes
+de escribirlo — y análogamente en la lectura, devuelve el archivo como
+string base64 en vez de intentar decodificarlo como texto.
+
+Ejemplo, subiendo un PDF:
+
+```javascript
+import { readFileSync } from 'node:fs';
+
+const pdfBytes = readFileSync('documento.pdf');
+
+await mcpCall({
+  jsonrpc: '2.0', id: 10, method: 'tools/call',
+  params: {
+    name: 'webdav_create_remote_file',
+    arguments: {
+      path: '/documento.pdf',
+      content: pdfBytes.toString('base64'),
+      encoding: 'base64'
+    }
+  }
+});
+```
+
+Y bajándolo de vuelta:
+
+```javascript
+const result = await mcpCall({
+  jsonrpc: '2.0', id: 11, method: 'tools/call',
+  params: { name: 'webdav_get_remote_file', arguments: { path: '/documento.pdf', encoding: 'base64' } }
+});
+
+const base64Content = result.parsed.result.content[0].text;
+const pdfBytes = Buffer.from(base64Content, 'base64'); // idéntico byte a byte al original
+```
+
+No hace falta ningún parche manual de bytes ni renombrar archivos a `.txt`
+— `encoding: "base64"` cubre el caso general para cualquier archivo binario,
+sin importar cuántos bytes no-ASCII tenga.
+
 ## Variables de entorno relevantes
 
 | Variable | Propósito |

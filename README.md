@@ -38,7 +38,7 @@ flow this enables.
 
 ## Prerequisites
 
-- Node.js 18 or later
+- Node.js 20 or later
 - npm
 - A WebDAV server or account (Koofr, Nextcloud, `hacdias/webdav`, etc.)
 

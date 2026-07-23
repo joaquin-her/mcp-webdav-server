@@ -8,7 +8,7 @@ echo.
 REM Check if Node.js is installed
 where node >nul 2>nul
 if %ERRORLEVEL% neq 0 (
-    echo Error: Node.js is not installed. Please install Node.js 18 or later.
+    echo Error: Node.js is not installed. Please install Node.js 20 or later.
     exit /b 1
 )
 
@@ -17,8 +17,8 @@ for /f "tokens=1,2,3 delims=v." %%a in ('node -v') do (
     set NODE_MAJOR_VERSION=%%b
 )
 
-if %NODE_MAJOR_VERSION% LSS 18 (
-    echo Error: Node.js version 18 or higher is required. You have version v%NODE_MAJOR_VERSION%.
+if %NODE_MAJOR_VERSION% LSS 20 (
+    echo Error: Node.js version 20 or higher is required. You have version v%NODE_MAJOR_VERSION%.
     exit /b 1
 )
 

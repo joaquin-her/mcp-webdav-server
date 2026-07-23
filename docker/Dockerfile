@@ -18,10 +18,11 @@ RUN npm run build
 # Expose the default port
 EXPOSE 3000
 
-# Persisted OAuth state (registered clients, tokens) lives here — mount a
-# volume at this path so it survives restarts/redeploys.
+# Persisted OAuth state (registered clients, tokens) lives here. Railway
+# rejects the Docker VOLUME instruction — mount a Railway Volume at this
+# path from the dashboard instead (Settings > Volumes) for it to survive
+# restarts/redeploys; on other Docker hosts, `docker run -v` a volume here.
 RUN mkdir -p /data
-VOLUME ["/data"]
 
 # Set environment variables
 ENV NODE_ENV=production

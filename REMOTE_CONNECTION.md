@@ -36,12 +36,23 @@ credenciales **no son las de Koofr** — son propias de este servidor.
 3. Iniciás sesión con `AUTH_USERNAME` / `AUTH_PASSWORD` en el formulario que
    aparece.
 4. El cliente recibe el token y queda conectado — las tools quedan
-   disponibles con el prefijo del connector, por ejemplo
-   `webdav-koofr__webdav_list_remote_directory`.
+   disponibles con el prefijo del connector que le pongas al agregarlo, por
+   ejemplo `agent-vault__webdav_list_remote_directory`.
 
 No hace falta editar `.mcp.json` a mano para este flujo; el "Add OAuth Client
 ID" que pide la UI cuando falla el registro automático ya no es necesario una
 vez que el servidor implementa DCR (`/register`).
+
+### Múltiples instancias a la vez
+
+Nada impide correr más de una instancia de este mismo servidor (mismo repo,
+distintos `WEBDAV_ROOT_PATH`) y agregarlas como Connectors separados — por
+ejemplo `agent-vault` apuntando a una carpeta de trabajo libre para agentes, y
+`obsidian-vault` apuntando a un vault personal curado. Cada instancia expone
+`serverInfo.name` (configurable con `MCP_SERVER_NAME`, ver `.env.example`) para
+que se puedan distinguir en la UI del cliente, y cada una necesita su propio
+volumen persistente y sus propias credenciales de login — ver la sección
+"Running multiple instances" en el [README.md](README.md).
 
 ### Alternativa: `.mcp.json` manual
 
@@ -52,7 +63,7 @@ como header:
 ```json
 {
   "mcpServers": {
-    "webdav-koofr": {
+    "agent-vault": {
       "type": "http",
       "url": "https://<tu-host>.up.railway.app/mcp",
       "headers": {

@@ -47,7 +47,8 @@ async function main() {
       webdavConfig,
       useHttp,
       httpConfig,
-      annaConfig
+      annaConfig,
+      serverName: process.env.MCP_SERVER_NAME
     });
   } catch (error) {
     console.error('Failed to start server:', error);

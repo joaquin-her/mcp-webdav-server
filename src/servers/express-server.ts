@@ -124,8 +124,8 @@ export function setupExpressServer(createMcpServer: () => McpServer, config: Exp
   app.get('/health', (req, res) => {
     res.json({
       status: 'ok',
-      name: 'WebDAV MCP Server',
-      version: '1.0.0',
+      name: process.env.MCP_SERVER_NAME ?? 'Agent Vault',
+      version: '1.0.4',
       description: 'MCP Server for WebDAV operations with OAuth 2.1 authentication',
       activeSessions: transports.size
     });

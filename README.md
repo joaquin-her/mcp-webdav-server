@@ -71,6 +71,9 @@ PUBLIC_URL=https://your-server.example.com
 AUTH_ENABLED=true
 AUTH_USERNAME=user
 AUTH_PASSWORD=pass
+
+# Name shown to MCP clients and on /health (defaults to "Agent Vault")
+MCP_SERVER_NAME=Agent Vault
 ```
 
 See [.env.example](.env.example) for the full list, including bcrypt password hashing
@@ -162,6 +165,24 @@ Authorization codes and in-flight login sessions are intentionally kept
 in-memory only — they live minutes at most and are always tied to a
 request in progress, so losing them on a restart just means retrying that
 one login rather than a real regression.
+
+### Running multiple instances
+
+Nothing in this server hardcodes a single deployment — the same repo/Dockerfile
+can back several independent instances, each pointed at a different
+`WEBDAV_ROOT_PATH` (e.g. one folder for freeform agent-generated content, another
+for a curated personal vault), by deploying it as separate services (Railway or
+otherwise) with different env vars:
+
+- `WEBDAV_ROOT_PATH` (and `WEBDAV_ROOT_URL`/credentials, if they differ)
+- `MCP_SERVER_NAME`, so each instance identifies itself distinctly to clients
+- `AUTH_USERNAME`/`AUTH_PASSWORD`, so each has its own OAuth login
+- A separate persistent volume mounted at `/data` (`STATE_FILE_PATH`) per
+  instance, so their registered OAuth clients/tokens don't collide
+
+`PUBLIC_URL` doesn't need to be set explicitly in this case — each Railway
+service gets its own domain via `RAILWAY_PUBLIC_DOMAIN` automatically. Add each
+instance as a separate Connector in Claude Code to have both available at once.
 
 ## Available MCP Tools
 

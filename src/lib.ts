@@ -29,6 +29,7 @@ export interface ServerOptions {
   useHttp?: boolean;
   httpConfig?: HttpServerConfig;
   annaConfig?: AnnaConfig;
+  serverName?: string;
 }
 
 /**
@@ -56,8 +57,8 @@ export async function startWebDAVServer(options: ServerOptions): Promise<void> {
     // session rather than one shared instance.
     function createMcpServer(): McpServer {
       const server = new McpServer({
-        name: 'WebDAV Server',
-        version: '1.0.1',
+        name: options.serverName ?? 'Agent Vault',
+        version: '1.0.4',
         description: 'MCP Server for WebDAV operations with configurable authentication'
       }, {
         capabilities: {

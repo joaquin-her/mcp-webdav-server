@@ -2,10 +2,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
 import { WebDAVService, WebDAVConfig } from './services/webdav-service.js';
-import { AnnaService, AnnaConfig } from './services/anna-service.js';
 import { setupResourceHandlers } from './handlers/resource-handlers.js';
 import { setupToolHandlers } from './handlers/tool-handlers.js';
-import { setupAnnaToolHandlers } from './handlers/anna-tool-handlers.js';
 import { setupPromptHandlers } from './handlers/prompt-handlers.js';
 import { setupExpressServer } from './servers/express-server.js';
 import { validateConfig, ValidatedServerOptions } from './config/validation.js';
@@ -28,7 +26,6 @@ export interface ServerOptions {
   webdavConfig: WebDAVConfig;
   useHttp?: boolean;
   httpConfig?: HttpServerConfig;
-  annaConfig?: AnnaConfig;
   serverName?: string;
 }
 
@@ -46,10 +43,6 @@ export async function startWebDAVServer(options: ServerOptions): Promise<void> {
 
     // Initialize the WebDAV service
     const webdavService = new WebDAVService(webdavConfig);
-
-    // Initialize the Anna's Archive service (search always works; downloads
-    // require ANNAS_SECRET_KEY, checked lazily inside AnnaService)
-    const annaService = new AnnaService(options.annaConfig);
 
     // Builds a fresh MCP server instance. A Server/McpServer can only be
     // connected to a single transport at a time, so Streamable HTTP (which
@@ -71,7 +64,6 @@ export async function startWebDAVServer(options: ServerOptions): Promise<void> {
 
       setupResourceHandlers(server, webdavService);
       setupToolHandlers(server, webdavService);
-      setupAnnaToolHandlers(server, annaService, webdavService);
       setupPromptHandlers(server);
 
       return server;

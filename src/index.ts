@@ -36,18 +36,11 @@ async function main() {
       }
     } : undefined;
     
-    // Prepare Anna's Archive config (search works without a key; downloads need it)
-    const annaConfig = {
-      baseUrl: process.env.ANNAS_BASE_URL,
-      secretKey: process.env.ANNAS_SECRET_KEY
-    };
-
     // Start the server
     await startWebDAVServer({
       webdavConfig,
       useHttp,
       httpConfig,
-      annaConfig,
       serverName: process.env.MCP_SERVER_NAME
     });
   } catch (error) {

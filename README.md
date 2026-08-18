@@ -189,6 +189,8 @@ instance as a separate Connector in Claude Code to have both available at once.
 - `webdav_list_remote_directory` — list files and directories at a path
 - `webdav_get_remote_file` — read a file's content
 - `webdav_create_remote_file` — create a new file
+- `webdav_create_remote_files` — create multiple files in one call (e.g. uploading a whole
+  folder of notes/images), creating any missing parent directories automatically
 - `webdav_update_remote_file` — overwrite an existing file's content
 - `webdav_delete_remote_item` — delete a file or directory
 - `webdav_create_remote_directory` — create a directory

@@ -175,6 +175,26 @@ export class WebDAVService {
   }
 
   /**
+   * Recursively create a directory and any missing parent directories,
+   * doing nothing if it already exists. Used before bulk file writes so
+   * files can be placed in subdirectories that don't exist yet — plain
+   * WebDAV PUT doesn't create intermediate directories on its own.
+   */
+  async ensureDirectoryExists(path: string): Promise<void> {
+    const fullPath = this.getFullPath(path);
+    const alreadyExists = await this.exists(path);
+    if (alreadyExists) return;
+
+    logger.debug(`Ensuring directory exists (recursive): ${fullPath}`);
+    try {
+      await this.client.createDirectory(fullPath, { recursive: true });
+    } catch (error) {
+      logger.error(`Error ensuring directory exists ${fullPath}:`, error);
+      throw new Error(`Failed to create directory: ${(error as Error).message}`);
+    }
+  }
+
+  /**
    * Create a directory
    */
   async createDirectory(path: string): Promise<void> {

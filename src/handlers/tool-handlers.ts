@@ -74,6 +74,59 @@ export function setupToolHandlers(server: McpServer, webdavService: WebDAVServic
     })
   );
 
+  // Bulk create files tool
+  server.tool(
+    'webdav_create_remote_files',
+    'Create multiple files on a remote WebDAV server in a single call — use this instead of ' +
+      'calling webdav_create_remote_file repeatedly when uploading several files (e.g. a whole ' +
+      'folder of notes and images) at once. Each file is created independently: one failing ' +
+      '(e.g. already exists) does not stop the others. For binary files (PDFs, images, etc.), ' +
+      'set that file\'s encoding to "base64" and pass base64-encoded content — plain "utf8" ' +
+      'text corrupts binary data.',
+    {
+      files: z.array(z.object({
+        path: z.string().min(1, 'Path must not be empty'),
+        content: z.string(),
+        encoding: z.enum(['utf8', 'base64']).optional().default('utf8'),
+        overwrite: z.boolean().optional().default(false)
+      })).min(1, 'At least one file is required')
+    },
+    withDebugLogging('webdav_create_remote_files', async ({ files }) => {
+      const results = await Promise.all(files.map(async ({ path, content, encoding, overwrite }) => {
+        try {
+          const exists = await webdavService.exists(path);
+          if (exists && !overwrite) {
+            return { path, success: false, message: `Already exists at ${path}. Use overwrite=true to replace it.` };
+          }
+
+          const parentDir = path.slice(0, path.lastIndexOf('/'));
+          if (parentDir) {
+            await webdavService.ensureDirectoryExists(parentDir);
+          }
+
+          await webdavService.writeFile(path, content, encoding);
+          return { path, success: true, message: `Created successfully at ${path}` };
+        } catch (error) {
+          return { path, success: false, message: (error as Error).message };
+        }
+      }));
+
+      const failures = results.filter(r => !r.success);
+
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            created: results.length - failures.length,
+            failed: failures.length,
+            results
+          }, null, 2)
+        }],
+        isError: failures.length === results.length
+      };
+    })
+  );
+
   // Read file tool
   server.tool(
     'webdav_get_remote_file',

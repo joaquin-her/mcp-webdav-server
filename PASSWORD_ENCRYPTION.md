@@ -1,6 +1,6 @@
 # WebDAV Password Encryption
 
-This document explains how to use bcrypt-encrypted passwords with the WebDAV MCP Server.
+This document explains how to use bcrypt-encrypted passwords with the Obsidian Vault MCP.
 
 ## Why Use Encrypted Passwords?
 
@@ -12,7 +12,7 @@ When connecting to a WebDAV server, you need to provide authentication credentia
 
 ## How It Works
 
-The WebDAV MCP Server supports bcrypt-hashed passwords using the following format:
+The Obsidian Vault MCP supports bcrypt-hashed passwords using the following format:
 
 ```
 {bcrypt}$2y$10$CyLKnUwn9fqqKQFEbxpZFuE9mzWR/x8t6TE7.CgAN0oT8I/5jKJBy
@@ -32,7 +32,7 @@ You can generate a bcrypt hash for your password using the built-in utility:
 npm run generate-hash -- yourpassword [rounds]
 
 # Or with npx
-npx webdav-mcp-generate-hash yourpassword [rounds]
+npx obsidian-vault-mcp-generate-hash yourpassword [rounds]
 
 # Or directly, if built from source
 node dist/utils/generate-hash.js yourpassword [rounds]
@@ -54,7 +54,7 @@ Or when using Docker:
 docker run -p 3000:3000 \
   -e WEBDAV_USERNAME=admin \
   -e WEBDAV_PASSWORD="{bcrypt}$2y$10$CyLKnUwn9fqqKQFEbxpZFuE9mzWR/x8t6TE7.CgAN0oT8I/5jKJBy" \
-  webdav-mcp-server
+  obsidian-vault-mcp
 ```
 
 ## Security Considerations
@@ -66,10 +66,10 @@ docker run -p 3000:3000 \
 
 ## Programmatic Usage
 
-When using the WebDAV MCP Server programmatically, you can provide encrypted passwords the same way:
+When using the Obsidian Vault MCP programmatically, you can provide encrypted passwords the same way:
 
 ```javascript
-import { startWebDAVServer } from 'webdav-mcp-server';
+import { startWebDAVServer } from 'obsidian-vault-mcp';
 
 await startWebDAVServer({
   webdavConfig: {

@@ -1,13 +1,13 @@
 {
-  "name": "webdav-mcp-server",
+  "name": "obsidian-vault-mcp",
   "version": "1.0.4",
-  "description": "A Model Context Protocol server for WebDAV operations with basic authentication",
+  "description": "A remote MCP server for reading and writing Obsidian vaults over WebDAV, with OAuth 2.1 for secure multi-instance deployments",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "webdav-mcp-server": "dist/bin.js",
-    "webdav-mcp-generate-hash": "dist/utils/generate-hash.js"
+    "obsidian-vault-mcp": "dist/bin.js",
+    "obsidian-vault-mcp-generate-hash": "dist/utils/generate-hash.js"
   },
   "scripts": {
     "build": "tsc",
@@ -24,20 +24,21 @@
     "claude",
     "anthropic",
     "ai",
+    "obsidian",
     "file-management",
     "webdav-client"
   ],
   "author": {
-    "name": "WebDAV MCP Server Contributors // Anders Laub"
+    "name": "Joaquin H"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/LaubPlusCo/mcp-webdav-server"
+    "url": "https://github.com/joaquin-her/obsidian-vault-mcp"
   },
   "bugs": {
-    "url": "https://github.com/LaubPlusCo/mcp-webdav-server/issues"
+    "url": "https://github.com/joaquin-her/obsidian-vault-mcp/issues"
   },
-  "homepage": "https://github.com/LaubPlusCo/mcp-webdav-server/#readme",
+  "homepage": "https://github.com/joaquin-her/obsidian-vault-mcp/#readme",
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.7.0",

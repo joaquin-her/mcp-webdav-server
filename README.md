@@ -1,24 +1,36 @@
-# WebDAV MCP Server
+# Obsidian Vault MCP
 
 A [Model Context Protocol](https://modelcontextprotocol.io) server that exposes CRUD
 operations on any WebDAV endpoint as MCP tools. It lets Claude Desktop, Claude Code,
 and other MCP clients — including remote ones, via OAuth — read, write, and organize
-files on a WebDAV file system through natural language.
+files on a WebDAV file system through natural language. Built to give AI agents
+controlled access to Obsidian vaults stored remotely (Koofr, Nextcloud, etc.) — a
+generic WebDAV server underneath, since a vault is just a folder of Markdown files.
 
 Originally forked from [LaubPlusCo/mcp-webdav-server](https://github.com/LaubPlusCo/mcp-webdav-server);
 this fork adds OAuth 2.1 support, a Streamable HTTP transport, and hardening for
 running as a persistent remote server (tested against [Koofr](https://koofr.eu) and
 deployed on [Railway](https://railway.app)).
 
+Currently running as **two independent deployments** from this same codebase, each
+pointed at a different [Obsidian](https://obsidian.md) vault in Koofr and connected to
+Claude as a separate Connector:
+
+- **Agent Vault** — a freeform folder where AI agents write/experiment without
+  restrictions (`master` branch).
+- **Obsidian Vault** — a curated personal vault, plus [Anna's Archive](https://annas-archive.gl)
+  book/article search tools (`annas-archive` branch).
+
+See [Running multiple instances](#running-multiple-instances) below for how that's set up.
+
 ## Why
 
-I wanted to read, create, and edit notes in my [Obsidian](https://obsidian.md) vault —
-stored in Koofr, which speaks WebDAV — from anywhere: Claude Code on my machine, and
-eventually a chat bot on my phone (Telegram/WhatsApp). An Obsidian vault is just a
-folder of Markdown files, so a generic WebDAV MCP server is enough: no Obsidian-specific
-concepts (tags, backlinks, semantic search) are needed to read and write notes, only
-file CRUD. See [REMOTE_CONNECTION.md](REMOTE_CONNECTION.md) for the exact connection
-flow this enables.
+I wanted to read, create, and edit notes in my Obsidian vault — stored in Koofr, which
+speaks WebDAV — from anywhere: Claude Code on my machine, and eventually a chat bot on
+my phone (Telegram/WhatsApp). An Obsidian vault is just a folder of Markdown files, so a
+generic WebDAV MCP server is enough: no Obsidian-specific concepts (tags, backlinks,
+semantic search) are needed to read and write notes, only file CRUD. See
+[REMOTE_CONNECTION.md](REMOTE_CONNECTION.md) for the exact connection flow this enables.
 
 ## Features
 
@@ -45,8 +57,8 @@ flow this enables.
 ## Installation
 
 ```bash
-git clone https://github.com/joaquin-her/mcp-webdav-server.git
-cd mcp-webdav-server
+git clone https://github.com/joaquin-her/obsidian-vault-mcp.git
+cd obsidian-vault-mcp
 npm install
 npm run build
 ```
@@ -207,7 +219,7 @@ instance as a separate Connector in Claude Code to have both available at once.
 ## Docker
 
 ```bash
-docker build -t webdav-mcp-server .
+docker build -t obsidian-vault-mcp .
 docker run -p 3000:3000 \
   -e WEBDAV_ROOT_URL=https://app.koofr.net/dav/Koofr \
   -e WEBDAV_ROOT_PATH=/MyVault \
@@ -217,7 +229,7 @@ docker run -p 3000:3000 \
   -e AUTH_ENABLED=true \
   -e AUTH_USERNAME=user \
   -e AUTH_PASSWORD=pass \
-  webdav-mcp-server
+  obsidian-vault-mcp
 ```
 
 ### Local WebDAV server via Docker Compose

@@ -256,6 +256,8 @@ npm test
 - [REMOTE_CONNECTION.md](REMOTE_CONNECTION.md) — OAuth flow, Connector setup, bot
   integration reference
 - [PASSWORD_ENCRYPTION.md](PASSWORD_ENCRYPTION.md) — bcrypt password hashing details
+- [docs/VAULT-LIBRARIAN.md](docs/VAULT-LIBRARIAN.md) — technical writeup of the
+  `vault-librarian` subagent that operates both vaults on Joaquín's behalf
 
 ## License
 
